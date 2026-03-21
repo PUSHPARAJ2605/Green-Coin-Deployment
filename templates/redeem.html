@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}Withdraw Rewards - CivicWaste{% endblock %}
+
+{% block content %}
+<nav class="navbar">
+    <a href="javascript:goToDashboard()" class="logo">🌿 CivicWaste</a>
+    <div onclick="goToDashboard()" style="display: flex; align-items: center; gap: 8px; background: var(--green-pale); padding: 8px 18px; border-radius: 25px; cursor: pointer; color: var(--green-primary); font-weight: 600; transition: all 0.2s ease; border: 1px solid rgba(46, 125, 50, 0.1);">
+        <i class="bi bi-arrow-left" style="font-size: 18px;"></i>
+        <span style="font-size: 13px;">Back to Dashboard</span>
+    </div>
+</nav>
+
+<div style="padding: 20px; max-width: 500px; margin: 0 auto;">
+
+    <!-- Balance Hero Card (Compact) -->
+    <div class="card" style="background: linear-gradient(135deg, #1B5E20, #2E7D32); color: white; margin-bottom: 24px; padding: 25px; text-align: center; border-radius: 20px;">
+        <div style="font-size: 11px; font-weight: 700; opacity: 0.8; letter-spacing: 1px; margin-bottom: 5px;">CURRENT BALANCE</div>
+        <div id="balanceDisplay" style="font-size: 42px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            0 <i class="bi bi-coin" style="color: #FFD700;"></i>
+        </div>
+    </div>
+
+    <!-- Withdrawal Form -->
+    <div class="card" style="margin-bottom: 24px; padding: 30px;">
+        
+        <!-- Minimum Amount Alert (Red for emphasis) -->
+        <div style="background: #FEE2E2; color: #991B1B; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(153, 27, 27, 0.1);">
+            <i class="bi bi-exclamation-circle-fill"></i>
+            <span>Minimum redemption amount is 100 coins.</span>
+        </div>
+
+        <div class="input-group">
+            <label>Amount to Withdraw</label>
+            <input type="number" id="redeemAmount" class="form-input" placeholder="e.g. 100" min="100" style="border: 2px solid var(--green-primary); background: white;" oninput="updateCalculation()">
+            <p id="cashReceived" style="color: var(--green-primary); font-size: 13px; font-weight: 600; margin-top: 8px; display: none;">You will receive ₹0.00</p>
+        </div>
+
+
+        <div class="input-group">
+            <label>Select Payment Method</label>
+            <div style="display: flex; gap: 2px; background: #F3F4F6; padding: 4px; border-radius: 12px; margin-top: 8px;">
+                <button id="upiMethod" style="flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; background: white; color: var(--green-primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05);" onclick="setMethod('upi')">UPI Transfer</button>
+                <button id="cardMethod" style="flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 600; background: transparent; color: var(--text-muted);" onclick="setMethod('card')">Card Payout</button>
+            </div>
+        </div>
+
+        <div id="upiFields">
+            <div class="input-group">
+                <label>UPI ID [Recommended]</label>
+                <input type="text" id="upiId" class="form-input" placeholder="e.g. mobile-num@upi" style="background: #F9FAFB; border: none;">
+            </div>
+        </div>
+
+        <div id="cardFields" style="display: none;">
+            <div class="input-group">
+                <label>Card Number</label>
+                <input type="text" id="cardNumber" class="form-input" placeholder="0000 0000 0000 0000" style="background: #F9FAFB; border: none;">
+            </div>
+            <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                <div style="flex: 2;">
+                    <label style="font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: block;">Expiry Date</label>
+                    <input type="text" id="expiryDate" class="form-input" placeholder="MM/YY" style="background: #F9FAFB; border: none;">
+                </div>
+                <div style="flex: 1;">
+                    <label style="font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; display: block;">CVV</label>
+                    <input type="password" id="cvv" class="form-input" placeholder="***" style="background: #F9FAFB; border: none;">
+                </div>
+            </div>
+        </div>
+
+
+        <div class="input-group">
+            <label>Add Note (Optional)</label>
+            <textarea id="note" class="form-input" placeholder="Add details..." style="background: #F9FAFB; border: none; min-height: 80px; resize: none;"></textarea>
+        </div>
+
+        <button id="redeemBtn" class="btn-primary" style="width: 100%; height: 52px; font-size: 16px; border-radius: 12px; margin-top: 10px;" onclick="redeemCoins()">
+            Confirm Withdrawal
+        </button>
+    </div>
+
+    <!-- Transaction History -->
+    <h3 style="margin: 32px 0 16px; display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--text-muted);">
+        <i class="bi bi-clock-history"></i> Withdrawal History
+    </h3>
+    <div id="transactionsList">
+        <div style="text-align:center; color: var(--text-muted); padding: 30px;">Loading...</div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="successModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 3000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="max-width: 360px; width: 100%; text-align: center; padding: 40px 30px; background: white; animation: popIn 0.3s ease;">
+        <div style="width: 72px; height: 72px; background: var(--green-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 36px; color: white;">₹</div>
+        <h2 style="color: var(--green-primary); margin-bottom: 10px;">Withdrawal Sent!</h2>
+        <p style="color: var(--text-muted); margin-bottom: 24px;">Your request is being processed and will be credited soon.</p>
+        <button class="btn-primary" style="width: 100%;" onclick="document.getElementById('successModal').style.display='none'; location.reload()">Done</button>
+    </div>
+</div>
+
+<style>
+@keyframes popIn {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+.input-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+</style>
+
+<!-- Leaflet CSS & JS (for map.js WebSocket integration) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="/static/js/map.js"></script>
+
+<script>
+let currentMethod = 'upi';
+
+function goToDashboard() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user) { window.location.href = '/'; return; }
+    window.location.href = user.role === 'citizen' ? '/dashboard/citizen/' : '/dashboard/collector/';
+}
+
+function updateCalculation() {
+    const amount = document.getElementById('redeemAmount').value;
+    const cashDisplay = document.getElementById('cashReceived');
+    const btn = document.getElementById('redeemBtn');
+
+    if (!amount || amount <= 0) {
+        cashDisplay.style.display = 'none';
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+        return;
+    }
+
+    const value = (amount * 0.10).toFixed(2);
+    cashDisplay.innerText = `You will receive ₹${value}`;
+    cashDisplay.style.display = 'block';
+    
+    if (amount < 100) {
+        btn.disabled = true;
+        btn.style.opacity = '0.5';
+    } else {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+    }
+}
+
+function setMethod(method) {
+    currentMethod = method;
+    const upiBtn = document.getElementById('upiMethod');
+    const cardBtn = document.getElementById('cardMethod');
+    
+    if (method === 'upi') {
+        upiBtn.style.background = 'white';
+        upiBtn.style.color = 'var(--green-primary)';
+        upiBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+        cardBtn.style.background = 'transparent';
+        cardBtn.style.color = 'var(--text-muted)';
+        cardBtn.style.boxShadow = 'none';
+        document.getElementById('upiFields').style.display = 'block';
+        document.getElementById('cardFields').style.display = 'none';
+    } else {
+        cardBtn.style.background = 'white';
+        cardBtn.style.color = 'var(--green-primary)';
+        cardBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+        upiBtn.style.background = 'transparent';
+        upiBtn.style.color = 'var(--text-muted)';
+        upiBtn.style.boxShadow = 'none';
+        document.getElementById('upiFields').style.display = 'none';
+        document.getElementById('cardFields').style.display = 'block';
+    }
+}
+
+
+async function loadRedeemData() {
+    const token = localStorage.getItem('access');
+    if (!token) { window.location.href = '/'; return; }
+
+    const response = await fetch('/api/rewards/summary/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await response.json();
+    const coins = data.coins || 0;
+
+    document.getElementById('balanceDisplay').innerHTML = `${coins} <i class="bi bi-coin" style="color: #FFD700;"></i>`;
+
+    // Load transactions
+    const txResponse = await fetch('/api/rewards/transactions/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const txData = await txResponse.json();
+
+    const redeemedOnly = txData.filter(tx => tx.transaction_type === 'redeemed');
+    const list = document.getElementById('transactionsList');
+    
+    if (redeemedOnly.length === 0) {
+        list.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding: 30px; border: 1px dashed var(--border); border-radius: 12px;">No withdrawal history yet.</div>`;
+        return;
+    }
+
+    list.innerHTML = redeemedOnly.map(tx => `
+        <div style="display: flex; align-items: center; gap: 15px; background: white; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px; box-shadow: 0 1px 6px rgba(0,0,0,0.06);">
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: #FFF3CD; color: #D97706; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+            <div style="flex: 1; min-width: 0;">
+                <div style="font-weight: 600; font-size: 14px;">${tx.description}</div>
+                <div style="font-size: 12px; color: var(--text-muted);">${new Date(tx.created_at).toLocaleString('en-IN')}</div>
+            </div>
+            <div style="font-weight: 700; font-size: 16px; color: #DC2626; flex-shrink: 0;">
+                -${tx.amount} <i class="bi bi-coin" style="color: #D97706;"></i>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function redeemCoins() {
+    const token = localStorage.getItem('access');
+    const amount = document.getElementById('redeemAmount').value;
+    if (!amount || amount < 100) {
+        alert('Please enter a valid amount (minimum 100 coins).');
+        return;
+    }
+
+    let methodDetails = '';
+    if (currentMethod === 'upi') {
+        methodDetails = document.getElementById('upiId').value;
+        if (!methodDetails) { alert('Please enter UPI ID'); return; }
+    } else {
+        const card = document.getElementById('cardNumber').value;
+        const exp = document.getElementById('expiryDate').value;
+        const cvv = document.getElementById('cvv').value;
+        if (!card || !exp || !cvv) { alert('Please fill all card details'); return; }
+        methodDetails = `Card: ****${card.slice(-4)}`;
+    }
+
+    const btn = document.getElementById('redeemBtn');
+    btn.innerText = 'Processing...';
+    btn.disabled = true;
+
+    try {
+        const response = await fetch('/api/rewards/redeem/', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                amount: amount,
+                method: currentMethod.toUpperCase(),
+                details: methodDetails
+            })
+        });
+        const data = await response.json();
+
+
+        if (response.ok) {
+            window.location.href = '/redeem/success/';
+        } else {
+
+            alert(data.error || 'Redemption failed.');
+            btn.innerText = 'Confirm Withdrawal';
+            btn.disabled = false;
+        }
+    } catch (err) {
+        console.error(err);
+        btn.innerText = 'Confirm Withdrawal';
+        btn.disabled = false;
+    }
+}
+
+loadRedeemData();
+</script>
+{% endblock %}

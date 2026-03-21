@@ -1,0 +1,14 @@
+Django>=4.2,<5.0
+djangorestframework>=3.14
+djangorestframework-simplejwt>=5.3
+channels>=4.0
+channels-redis>=4.1
+daphne>=4.0
+django-cors-headers>=4.3
+mysqlclient>=2.2
+Pillow>=10.0
+python-decouple>=3.8
+redis>=5.0
+imagehash>=4.3.1
+tensorflow-cpu>=2.15.0
+pymysql>=1.1.0

@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %}Collector Dashboard - CivicWaste{% endblock %}
+
+{% block content %}
+<nav class="navbar">
+    <div style="flex: 1;">
+        <a href="/dashboard/collector/" class="logo">🌿 CivicWaste</a>
+    </div>
+    <div style="flex: 1; display: flex; justify-content: center;">
+        <span class="role-badge role-collector">● COLLECTOR</span>
+    </div>
+    <div style="flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 15px;">
+        <a href="/redeem/" style="text-decoration: none; color: #D97706; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 4px;">
+            <i class="bi bi-gift"></i> Redeem
+        </a>
+        <div id="userInitials" style="width: 32px; height: 32px; background: #FFF3CD; color: #D97706; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">MC</div>
+        <div id="logoutBtn" style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+            <i class="bi bi-box-arrow-right" style="font-size: 20px;"></i>
+            <span style="font-size: 14px; font-weight: 600;">Logout</span>
+        </div>
+    </div>
+</nav>
+
+<div style="padding: 20px; max-width: 1200px; margin: 0 auto;">
+    <!-- Stats Row -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; margin-bottom: 24px;">
+        <div class="card" style="text-align: center; padding: 15px;">
+            <div id="statAvailable" style="font-size: 24px; font-weight: 700; color: var(--green-primary);">0</div>
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">AVAILABLE</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 15px;">
+            <div id="statActive" style="font-size: 24px; font-weight: 700; color: var(--amber);">0</div>
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">ACTIVE</div>
+        </div>
+        <div class="card" style="text-align: center; padding: 15px;">
+            <div id="statToday" style="font-size: 24px; font-weight: 700; color: #1565C0;">0</div>
+            <div style="font-size: 10px; color: var(--text-muted); font-weight: 600;">COLLECTED</div>
+        </div>
+    </div>
+
+    <!-- Map Section -->
+    <div class="card" style="padding: 0; overflow: hidden; height: 400px; margin-bottom: 24px; position: relative;">
+        <div id="map" style="height: 100%; width: 100%;"></div>
+        <div style="position: absolute; top: 10px; right: 10px; background: white; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 600; box-shadow: var(--shadow); z-index: 400;">
+            <div style="margin-bottom: 4px;"><span style="color: #1565C0;">●</span> Available</div>
+            <div style="margin-bottom: 4px;"><span style="color: #D97706;">●</span> My Pickups</div>
+            <div><span style="color: #2E7D32;">●</span> Collected</div>
+        </div>
+    </div>
+
+    <!-- Active Pickups Table -->
+    <div class="card">
+        <h3 style="margin-bottom: 15px; font-size: 16px;">🚛 My Active Pickups</h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 1px solid var(--border);">
+                        <th style="padding: 12px 8px;">ID</th>
+                        <th style="padding: 12px 8px;">Type</th>
+                        <th style="padding: 12px 8px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="activePickupsList">
+                    <!-- Dynamic -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Report Modal -->
+<div id="reportModal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; padding: 20px;">
+    <div class="card" style="width: 100%; max-width: 400px; padding: 15px;">
+        <div id="modalContent">
+            <!-- Dynamic -->
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button id="modalActionBtn" class="btn-primary" style="flex: 1;">Action</button>
+            <button onclick="document.getElementById('reportModal').style.display='none'" class="btn-secondary" style="flex: 1;">Close</button>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script src="/static/js/map.js"></script>
+<script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user || user.role !== 'collector') window.location.href = '/';
+
+    document.getElementById('userInitials').innerText = user.full_name.split(' ').map(n=>n[0]).join('').toUpperCase();
+    
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = '/';
+    });
+
+    async function loadStats() {
+        const token = localStorage.getItem('access');
+        const response = await fetch('/api/reports/', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const allReports = await response.json();
+        
+        const available = allReports.filter(r => r.status === 'pending').length;
+        const active = allReports.filter(r => r.status === 'picking' && r.collected_by === user.id).length;
+        const collected = allReports.filter(r => r.status === 'collected' && r.collected_by === user.id).length;
+        
+        document.getElementById('statAvailable').innerText = available;
+        document.getElementById('statActive').innerText = active;
+        document.getElementById('statToday').innerText = collected;
+
+        
+        // Active Table
+        const activeList = allReports.filter(r => r.status === 'picking' && r.collected_by === user.id);
+        document.getElementById('activePickupsList').innerHTML = activeList.map(r => `
+            <tr style="border-bottom: 1px solid var(--border);">
+                <td style="padding: 12px 8px;">#${r.id}</td>
+                <td style="padding: 12px 8px;">${r.waste_type}</td>
+                <td style="padding: 12px 8px;"><button onclick="markCollected(${r.id})" class="btn-primary" style="padding: 4px 12px; font-size: 12px; border-radius: 8px;">✓ Complete</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function markCollected(id) {
+        // Need to check waste type first for the 'Other' decision
+        const token = localStorage.getItem('access');
+        const response = await fetch(`/api/reports/${id}/`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const report = await response.json();
+        
+        if (report.waste_type === 'Other') {
+            showModal(report); // Open modal to let collector decide coins
+            return;
+        }
+
+        const statusResponse = await fetch(`/api/reports/${id}/status/`, {
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ status: 'collected' })
+        });
+        if (statusResponse.ok) {
+            window.location.href = '/success/';
+        }
+    }
+
+
+    // Overriding map logic for collector to open modal
+    window.loadReports = async function() {
+        const token = localStorage.getItem('access');
+        const response = await fetch('/api/reports/', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        data.forEach(report => {
+            let markerColor = '#1565C0';
+            if (report.status === 'picking') markerColor = '#D97706';
+            if (report.status === 'collected') markerColor = '#2E7D32';
+
+            const marker = L.circleMarker([report.latitude, report.longitude], {
+                radius: 8, fillColor: markerColor, color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.8
+            }).addTo(map);
+
+            marker.on('click', () => {
+                showModal(report);
+            });
+        });
+        loadStats();
+    }
+
+    function showModal(report) {
+        const modal = document.getElementById('reportModal');
+        const content = document.getElementById('modalContent');
+        const actionBtn = document.getElementById('modalActionBtn');
+        
+        content.innerHTML = `
+            <h4 style="margin-bottom: 10px;">Report #${report.id}</h4>
+            <img src="${report.photo}" style="width: 100%; border-radius: 8px; max-height: 200px; object-fit: cover; margin-bottom: 10px;">
+            <div class="status-badge status-${report.status}">${report.status}</div>
+            <p style="margin-top: 10px; font-size: 14px;"><b>Type:</b> ${report.waste_type}</p>
+            <p style="font-size: 14px;"><b>Desc:</b> ${report.description}</p>
+            ${report.waste_type === 'Other' && report.status === 'picking' ? `
+                <div style="margin-top: 15px; padding: 12px; background: #FFF9C4; border-radius: 8px; border: 1px solid #FBC02D;">
+                    <label style="font-size: 12px; font-weight: 700; color: #827717; display: block; margin-bottom: 5px;">COINS TO AWARD</label>
+                    <input type="number" id="otherCoins" class="form-input" placeholder="Enter coins (e.g. 10)" style="background: white; border: 1px solid #FBC02D; height: 38px;">
+                </div>
+            ` : ''}
+
+        `;
+        
+        if (report.status === 'pending') {
+            actionBtn.innerText = 'Pick up Task';
+            actionBtn.style.display = 'block';
+            actionBtn.onclick = () => updateStatus(report.id, 'picking');
+        } else if (report.status === 'picking' && report.collected_by === user.id) {
+            actionBtn.innerText = 'Mark Collected';
+            actionBtn.style.display = 'block';
+            actionBtn.onclick = () => updateStatus(report.id, 'collected');
+        } else {
+            actionBtn.style.display = 'none';
+        }
+        
+        modal.style.display = 'flex';
+    }
+
+    async function updateStatus(id, newStatus) {
+        const token = localStorage.getItem('access');
+        const body = { status: newStatus };
+        
+        if (newStatus === 'collected') {
+            const coinInput = document.getElementById('otherCoins');
+            if (coinInput) {
+                if (!coinInput.value || coinInput.value <= 0) {
+                    alert('Please specify coins to award for this report.');
+                    return;
+                }
+                body.coins = coinInput.value;
+            }
+        }
+
+        const response = await fetch(`/api/reports/${id}/status/`, {
+            method: 'PATCH',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify(body)
+        });
+        if (response.ok) {
+            document.getElementById('reportModal').style.display='none';
+            if (newStatus === 'collected') window.location.href = '/collector/success/';
+
+            else loadReports();
+        }
+    }
+
+</script>
+{% endblock %}
+{% endblock %}

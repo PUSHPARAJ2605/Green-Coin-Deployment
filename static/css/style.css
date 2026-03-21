@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+:root {
+    --green-primary: #2E7D32;
+    --green-light: #4CAF50;
+    --green-pale: #E8F5E9;
+    --amber: #F59E0B;
+    --white: #FFFFFF;
+    --bg: #F5F5E8;
+    --text: #1A1A1A;
+    --text-muted: #666666;
+    --border: #E0E0E0;
+    --shadow: 0 4px 12px rgba(0,0,0,0.08);
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 10px;
+    --font-inter: 'Inter', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: var(--font-inter);
+    background-color: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+}
+
+button {
+    cursor: pointer;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--green-primary);
+    color: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 12px 24px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+}
+
+.btn-secondary {
+    background: var(--white);
+    border: 2px solid var(--green-primary);
+    color: var(--green-primary);
+    border-radius: var(--radius-lg);
+    padding: 12px 24px;
+    font-weight: 600;
+}
+
+.card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    border: 2px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card:hover {
+    border-color: var(--green-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(46, 125, 50, 0.12);
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.form-input {
+    width: 100%;
+    background: #F0F4F0;
+    border-radius: var(--radius-sm);
+    border: 2px solid transparent;
+    padding: 14px 16px;
+    font-size: 15px;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    border-color: var(--green-primary);
+    background: var(--white);
+    outline: none;
+}
+
+.status-badge {
+    border-radius: 12px;
+    font-size: 12px;
+    padding: 4px 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-pending { background: #E3F2FD; color: #1565C0; }
+.status-picking { background: #FFF3CD; color: #D97706; }
+.status-collected { background: #E8F5E9; color: #2E7D32; }
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--green-primary);
+    font-weight: 700;
+    font-size: 20px;
+    text-decoration: none;
+}
+
+/* Navbar styles */
+.navbar {
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 12px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 1000;
+}
+
+.role-badge {
+    font-size: 16px;
+    font-weight: 800;
+    padding: 8px 24px;
+    border-radius: 30px;
+    letter-spacing: 0.5px;
+}
+
+.role-citizen { background: var(--green-pale); color: var(--green-primary); }
+.role-collector { background: #FFF3CD; color: #D97706; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .btn-primary, .btn-secondary {
+        width: 100%;
+    }
+}
+/* Remove spin buttons from number inputs */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+}
+
+input[type=number] {
+    -moz-appearance: textfield !important;
+    appearance: none !important;
+}
+
