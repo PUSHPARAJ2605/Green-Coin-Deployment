@@ -30,6 +30,8 @@
             <span>Minimum redemption amount is 100 coins.</span>
         </div>
 
+        <div id="redeemError" class="error-message"></div>
+
         <div class="input-group">
             <label>Amount to Withdraw</label>
             <input type="number" id="redeemAmount" class="form-input" placeholder="e.g. 100" min="100" style="border: 2px solid var(--green-primary); background: white;" oninput="updateCalculation()">
@@ -223,20 +225,32 @@ async function loadRedeemData() {
 async function redeemCoins() {
     const token = localStorage.getItem('access');
     const amount = document.getElementById('redeemAmount').value;
+    const redeemError = document.getElementById('redeemError');
+    redeemError.style.display = 'none';
+
     if (!amount || amount < 100) {
-        alert('Please enter a valid amount (minimum 100 coins).');
+        redeemError.innerText = 'Please enter a valid amount (minimum 100 coins).';
+        redeemError.style.display = 'block';
         return;
     }
 
     let methodDetails = '';
     if (currentMethod === 'upi') {
         methodDetails = document.getElementById('upiId').value;
-        if (!methodDetails) { alert('Please enter UPI ID'); return; }
+        if (!methodDetails) { 
+            redeemError.innerText = 'Please enter your UPI ID.';
+            redeemError.style.display = 'block';
+            return; 
+        }
     } else {
         const card = document.getElementById('cardNumber').value;
         const exp = document.getElementById('expiryDate').value;
         const cvv = document.getElementById('cvv').value;
-        if (!card || !exp || !cvv) { alert('Please fill all card details'); return; }
+        if (!card || !exp || !cvv) { 
+            redeemError.innerText = 'Please fill in all card details.';
+            redeemError.style.display = 'block';
+            return; 
+        }
         methodDetails = `Card: ****${card.slice(-4)}`;
     }
 
@@ -263,13 +277,15 @@ async function redeemCoins() {
         if (response.ok) {
             window.location.href = '/redeem/success/';
         } else {
-
-            alert(data.error || 'Redemption failed.');
+            redeemError.innerText = data.error || 'Redemption failed. Please check your balance.';
+            redeemError.style.display = 'block';
             btn.innerText = 'Confirm Withdrawal';
             btn.disabled = false;
         }
     } catch (err) {
         console.error(err);
+        redeemError.innerText = 'Something went wrong. Please try again later.';
+        redeemError.style.display = 'block';
         btn.innerText = 'Confirm Withdrawal';
         btn.disabled = false;
     }
