@@ -132,11 +132,22 @@ REST_FRAMEWORK = {
     ),
 }
 
-# Use InMemoryChannelLayer for development to avoid Redis dependency
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    },
-}
+# Use Redis for production real-time updates if REDIS_URL is provided
+if config('REDIS_URL', default=''):
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [config('REDIS_URL')],
+            },
+        },
+    }
+else:
+    # Fallback for development or if Redis is not yet configured
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 CORS_ALLOW_ALL_ORIGINS = True
