@@ -23,84 +23,76 @@ class WasteReportViewSet(viewsets.ModelViewSet):
         return super().get_queryset()
 
     def perform_create(self, serializer):
-        photo = self.request.FILES.get('photo')
-        waste_type = self.request.data.get('waste_type')
-        
-        # Calculate coins based on waste type
-        reward_map = {
-            'Garbage on Road': 10,
-            'Plastic Waste': 15,
-            'Construction Waste': 20,
-            'Medical Waste': 30,
-            'Dead Animals': 50,  # High reward for specialized disposal
-            'Other': 0  # To be decided by collector
-        }
-        coins = reward_map.get(waste_type, 10)
+        try:
+            photo = self.request.FILES.get('photo')
+            waste_type = self.request.data.get('waste_type')
+            
+            reward_map = {
+                'Garbage on Road': 10,
+                'Plastic Waste': 15,
+                'Construction Waste': 20,
+                'Medical Waste': 30,
+                'Dead Animals': 50,
+                'Other': 0
+            }
+            coins = reward_map.get(waste_type, 10)
 
-        if photo:
-            try:
-                img = Image.open(photo)
-                # Ensure it's in a memory-safe state
-                img.verify() # Verify it's an image
-                img = Image.open(photo) # Re-open because verify() makes it unusable
-                
-                h = str(imagehash.average_hash(img))
-                
-                # Check for duplicate hash
-                is_duplicate = WasteReport.objects.filter(description__icontains=h).exists()
-                
-                # Enhanced AI Validation Logic
-                is_spam = False
-                filename_lower = photo.name.lower()
-                
-                # 1. Filename checks
-                spam_keywords = ['spam', 'screenshot', 'test', 'dummy', 'wallpaper', 'background', 'logo', 'icon']
-                if any(word in filename_lower for word in spam_keywords):
-                    is_spam = True
-                    
-                # 2. Image contents analysis
+            if photo:
                 try:
-                    img_rgb = img.convert('RGB')
-                    w, h_img = img_rgb.size
+                    img = Image.open(photo)
+                    img.verify()
+                    img = Image.open(photo)
                     
-                    if w / h_img > 3.0 or h_img / w > 3.0:
+                    h = str(imagehash.average_hash(img))
+                    is_duplicate = WasteReport.objects.filter(description__icontains=h).exists()
+                    
+                    is_spam = False
+                    filename_lower = photo.name.lower()
+                    
+                    spam_keywords = ['spam', 'screenshot', 'test', 'dummy', 'wallpaper', 'background', 'logo', 'icon']
+                    if any(word in filename_lower for word in spam_keywords):
                         is_spam = True
-                    
-                    small_img = img_rgb.resize((100, 100))
-                    colors = small_img.getcolors(maxcolors=10000)
-                    
-                    if colors is not None:
-                        unique_colors = len(colors)
-                        if unique_colors < 1800: # Slightly relaxed threshold
+                        
+                    try:
+                        img_rgb = img.convert('RGB')
+                        w, h_img = img_rgb.size
+                        if w / h_img > 3.0 or h_img / w > 3.0:
                             is_spam = True
-                except Exception as ai_err:
-                    print(f"AI Analysis Error: {ai_err}")
-                    pass
+                        
+                        small_img = img_rgb.resize((100, 100))
+                        colors = small_img.getcolors(maxcolors=10000)
+                        if colors is not None and len(colors) < 1500:
+                            is_spam = True
+                    except:
+                        pass
 
-                if is_duplicate or is_spam:
-                    Transaction.objects.create(
-                        user=self.request.user,
-                        amount=20,
-                        transaction_type='penalty',
-                        description=f"Penalty: {'Duplicate' if is_duplicate else 'AI rejected invalid'} image upload"
-                    )
-                    if is_duplicate:
-                        raise serializers.ValidationError("Duplicate image detected! You have been penalized 20 coins.")
-                    else:
-                        raise serializers.ValidationError("AI Analysis: This image looks like clipart or a screenshot. Please upload a real photo. (20 coins penalized)")
+                    if is_duplicate or is_spam:
+                        Transaction.objects.create(
+                            user=self.request.user,
+                            amount=20,
+                            transaction_type='penalty',
+                            description=f"Penalty: {'Duplicate' if is_duplicate else 'AI rejected invalid'} image upload"
+                        )
+                        if is_duplicate:
+                            raise serializers.ValidationError({"error": "Duplicate image detected! You have been penalized 20 coins."})
+                        else:
+                            raise serializers.ValidationError({"error": "AI Analysis: This image looks like clipart or a screenshot. 20 coins penalized."})
 
-                # Save the hash in the description
-                desc = serializer.validated_data.get('description', '')
-                desc = f"{desc}\n[HASH:{h}]"
-                serializer.save(reported_by=self.request.user, coins_awarded=coins, description=desc)
-            except serializers.ValidationError:
-                raise # Re-raise field validation errors
-            except Exception as e:
-                print(f"Image Processing error: {e}")
-                # Fallback: Save without AI analysis if it fails to avoid 500
+                    desc = serializer.validated_data.get('description', '')
+                    desc = f"{desc}\n[HASH:{h}]"
+                    serializer.save(reported_by=self.request.user, coins_awarded=coins, description=desc)
+                except serializers.ValidationError:
+                    raise
+                except Exception as e:
+                    print(f"Image processing fallback: {e}")
+                    serializer.save(reported_by=self.request.user, coins_awarded=coins)
+            else:
                 serializer.save(reported_by=self.request.user, coins_awarded=coins)
-        else:
-            serializer.save(reported_by=self.request.user, coins_awarded=coins)
+        except serializers.ValidationError:
+            raise
+        except Exception as e:
+            # Final safety net: Return the actual error message to the frontend for debugging
+            raise serializers.ValidationError({"error": f"Server Error: {str(e)}"})
 
     @action(detail=False, methods=['get'])
     def mine(self, request):
