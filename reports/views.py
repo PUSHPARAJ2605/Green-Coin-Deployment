@@ -39,8 +39,13 @@ class WasteReportViewSet(viewsets.ModelViewSet):
 
             if photo:
                 try:
+                    # Reset pointer before starting
+                    photo.seek(0)
                     img = Image.open(photo)
                     img.verify()
+                    
+                    # Reset pointer before opening for processing
+                    photo.seek(0)
                     img = Image.open(photo)
                     
                     h = str(imagehash.average_hash(img))
@@ -80,11 +85,16 @@ class WasteReportViewSet(viewsets.ModelViewSet):
 
                     desc = serializer.validated_data.get('description', '')
                     desc = f"{desc}\n[HASH:{h}]"
+                    
+                    # Reset pointer one last time before saving to DB
+                    photo.seek(0)
                     serializer.save(reported_by=self.request.user, coins_awarded=coins, description=desc)
                 except serializers.ValidationError:
                     raise
                 except Exception as e:
                     print(f"Image processing fallback: {e}")
+                    # Even in fallback, we MUST seek(0)
+                    photo.seek(0)
                     serializer.save(reported_by=self.request.user, coins_awarded=coins)
             else:
                 serializer.save(reported_by=self.request.user, coins_awarded=coins)
