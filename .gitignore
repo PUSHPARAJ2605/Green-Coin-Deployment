@@ -1,5 +1,6 @@
 # Environments
 .env
+render.env
 .venv
 env/
 venv/
