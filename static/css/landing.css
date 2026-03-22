@@ -262,12 +262,26 @@ body {
 
 /* Responsive */
 @media (max-width: 1024px) {
-    .hero-image { display: none; }
     .hero-content { max-width: 100%; text-align: center; }
     .hero-btns { justify-content: center; }
 }
 
 @media (max-width: 768px) {
-    .hero h1 { font-size: 2.5rem; }
-    .nav-links { display: none; }
+    .nav { padding: 1rem 5%; }
+    .nav-links { display: none; } /* Consider a mobile menu later */
+    
+    .hero { height: auto; padding: 120px 5% 60px; }
+    .hero h1 { font-size: 2.2rem; margin-bottom: 1rem; }
+    .hero p { font-size: 1rem; margin-bottom: 1.5rem; }
+    .hero-btns { flex-direction: column; gap: 1rem; width: 100%; }
+    .btn { width: 100%; text-align: center; }
+
+    .features { padding: 4rem 5%; }
+    .section-head { margin-bottom: 2.5rem; }
+    .section-head h2 { font-size: 1.8rem; }
+    .feature-card { padding: 2rem 1.5rem; border-radius: 20px; }
+    
+    .how-it-works { padding: 4rem 5%; }
+    .how-grid { gap: 2rem; }
+    .step-num { font-size: 3rem; top: -1.5rem; }
 }

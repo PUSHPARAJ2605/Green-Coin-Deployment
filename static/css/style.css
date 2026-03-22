@@ -163,8 +163,57 @@ button {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+    :root {
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        --radius-sm: 8px;
+    }
+    
+    body { font-size: 14px; }
+    
+    .navbar {
+        padding: 10px 15px;
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+
+    .navbar > div {
+        justify-content: center !important;
+        width: 100%;
+    }
+
+    .role-badge {
+        font-size: 12px;
+        padding: 4px 16px;
+    }
+
+    .card {
+        padding: 12px;
+    }
+
     .btn-primary, .btn-secondary {
         width: 100%;
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
+    #map {
+        height: 250px !important; /* Scale down map on mobile */
+    }
+
+    .logo {
+        font-size: 18px;
+    }
+
+    .input-group label {
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    .form-input {
+        padding: 10px 12px;
+        font-size: 14px;
     }
 }
 /* Remove spin buttons from number inputs */
