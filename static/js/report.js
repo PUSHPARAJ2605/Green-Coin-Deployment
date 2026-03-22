@@ -28,11 +28,19 @@ reportForm.addEventListener('submit', async (e) => {
     
     // Get location first
     navigator.geolocation.getCurrentPosition(async pos => {
+        const reportError = document.getElementById('reportError');
+        reportError.style.display = 'none';
+        
         formData.append('latitude', pos.coords.latitude);
         formData.append('longitude', pos.coords.longitude);
         formData.append('waste_type', document.getElementById('wasteType').value);
         formData.append('description', document.getElementById('description').value);
         formData.append('photo', photoInput.files[0]);
+
+        const submitBtn = reportForm.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerText;
+        submitBtn.innerText = 'Submitting...';
+        submitBtn.disabled = true;
 
         try {
             const response = await fetch('/api/reports/', {
@@ -44,32 +52,41 @@ reportForm.addEventListener('submit', async (e) => {
             if (response.ok) {
                 window.location.href = '/success/';
             } else {
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    throw new Error(`Server returned error ${response.status}: ${response.statusText}`);
+                }
                 
-                // Convert errors to string to easily check for penalty keywords
                 const errorStr = JSON.stringify(data).toLowerCase();
                 
-                // Only redirect to penalty page if the AI ACTUALLY rejected it or it's a duplicate
                 if (response.status === 400 && errorStr.includes('penalized')) {
                     window.location.href = '/penalty/';
                 } else {
-                    // Extract human-readable error messages if possible
                     let msg = 'Submission failed. Please check form values.';
                     if (data) {
-                        if (Array.isArray(data)) msg = data.join('\\n');
+                        if (Array.isArray(data)) msg = data.join('\n');
                         else if (typeof data === 'object') {
-                            msg = Object.entries(data).map(([k, v]) => `${k}: ${v}`).join('\\n');
+                            msg = Object.entries(data).map(([k, v]) => `${v}`).join('\n');
                         }
                     }
-                    alert(msg);
+                    reportError.innerText = msg;
+                    reportError.style.display = 'block';
                 }
             }
         } catch (err) {
             console.error(err);
-            alert('An error occurred while submitting.');
+            reportError.innerText = (err.message && err.message.length < 100) ? err.message : 'An error occurred while submitting. Please try again later.';
+            reportError.style.display = 'block';
+        } finally {
+            submitBtn.innerText = originalBtnText;
+            submitBtn.disabled = false;
         }
     }, err => {
-        alert('Location access required to report waste.');
+        const reportError = document.getElementById('reportError');
+        reportError.innerText = 'Location access required to report waste.';
+        reportError.style.display = 'block';
     }, {
         enableHighAccuracy: true,
         maximumAge: 0,
