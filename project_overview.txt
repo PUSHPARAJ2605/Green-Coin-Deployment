@@ -1,0 +1,77 @@
+CivicWaste - Project Overview & Execution Guide
+===============================================
+
+1. FOLDER & PROJECT STRUCTURE
+-----------------------------------------------
+civicwaste/
+│
+├── civicwaste/        # Main Django project configuration folder (settings.py, urls.py, asgi.py/wsgi.py)
+├── accounts/          # Django app handling users (CustomUser model supporting both 'Citizen' and 'Collector' roles)
+├── reports/           # Django app managing waste reports (models for WasteReport, REST APIs, AI validation logic)
+├── rewards/           # Django app managing the virtual economy (Coin balances, Transaction history, Redemption logic)
+├── static/            # Static assets served to the browser
+│   ├── css/           # CSS stylesheets governing the modern UI design
+│   ├── js/            # Client-side JavaScript (e.g., map.js for WebSockets, report.js for geolocation limits)
+│   └── images/        # Static imagery used in templates
+├── templates/         # HTML structure for the web app (Django Template Language)
+│   ├── citizen/       # Dashboards and workflows specific to the citizen role
+│   ├── collector/     # Dashboards and workflows specific to the waste collector role
+│   └── ...            # Shared templates like login, success pages, and penalty screens
+├── media/             # Dynamic user uploads (e.g., photos of waste reports)
+├── .venv/             # Python Virtual Environment containing installed dependencies
+├── .env               # Environment variables (Database credentials, Keys)
+├── manage.py          # Django command-line utility for administrative tasks
+└── requirements.txt   # List of external Python packages required to run the project
+
+
+2. IMPLEMENTATION DETAILS
+-----------------------------------------------
+* Backend Framework: Built using Django and Django Rest Framework (DRF) to construct robust REST APIs for frontend interaction.
+* Real-time Communication: Integrated Django Channels with an ASGI server (Daphne) to establish WebSocket connections. This enables live coin balance updates, real-time map pin additions, and instant activity logs on user dashboards without page refreshes.
+* Database: MySQL (used in production mode) / SQLite (used for rapid prototyping). Managed via Django ORM.
+* AI Validation System: Uploaded waste images undergo a server-side AI-simulated analysis utilizing Pillow (PIL) and ImageHash. It intercepts and blocks non-photographic images (clipart, decorative borders, wide banners) by assessing RGB color variance and extreme aspect ratios, while preventing duplicate uploads via MD5 geometry tracking.
+* Frontend: Constructed natively using HTML5, modern CSS3 (with frosted glassmorphism elements), and Vanilla JavaScript.
+* Mapping: Interactive map features utilizing Leaflet.js to chart waste coordinates via geolocation tracking.
+
+
+3. PACKAGES & DEPENDENCIES
+-----------------------------------------------
+The application relies on the following key Python libraries (`requirements.txt`):
+* Django (>=4.2): The core MTV framework orchestrating the entire backend, ORM, routing, and templating.
+* djangorestframework (DRF) & djangorestframework-simplejwt: Powers the `/api/` endpoints ensuring strict data serialization, validation pipelines, and secure stateless JSON Web Token authentication.
+* channels, channels-redis, & daphne: Django Channels upgrades Django to handle WebSockets synchronously and asynchronously. Daphne acts as the ASGI (Asynchronous Server Gateway Interface) router, receiving WebSocket requests from `map.js` and pushing real-time balance updates securely broadcasted by `rewards.models` signals. Redis serves as the fast-in-memory channel layer backing store.
+* Pillow: Python Imaging Library. Used in `WasteReportViewSet` to physically load uploaded pixel matrices to inspect geometrical properties (aspect ratio widths/heights) and extract unique `RGB` color palettes (via resizing and `getcolors`) to algorithmically penalize graphic design clipart vs. real noisy photographs.
+* imagehash: Required to convert Pillow Image objects into MD5 numerical signatures for string comparisons, fundamentally blocking users submitting the exact same identical file twice to game the 10-coin reward map.
+* mysqlclient & pymysql: The high-performance C-based and pure Python (fallback) driver adapters bridging Django's ORM queries to the MySQL relational database.
+* django-cors-headers: A middleware component dynamically managing the Cross-Origin Resource Sharing policy allowing the Vue/Vanilla javascript frontend to legitimately hit the Backend REST APIS.
+* tensorflow-cpu: Included within the environment parameters for deeper scalable model upgrades natively.
+
+
+4. EXECUTION & DEPLOYMENT INSTRUCTIONS
+-----------------------------------------------
+To start this project locally, execute the following commands in your computer's terminal or PowerShell:
+
+Step 1: Open Terminal in the root directory (c:\Users\Bala\Desktop\project).
+
+Step 2: Activate the Virtual Environment
+Windows:
+> .\.venv\Scripts\activate
+
+Step 3: Install Required Dependencies (If not already installed)
+> python -m pip install -r requirements.txt
+
+Step 4: Execute Database Migrations
+(You must have your MySQL server running, or configure settings.py to use sqlite3 if switching machines)
+> python manage.py makemigrations
+> python manage.py migrate
+
+Step 5: Start the Development Server
+Since this project utilizes WebSockets (Django Channels), Daphne will automatically handle the ASGI connections.
+> python manage.py runserver
+
+Step 6: Access the Application
+Open your web browser and navigate to:
+http://127.0.0.1:8000/
+
+To access the admin dashboard:
+http://127.0.0.1:8000/admin/
