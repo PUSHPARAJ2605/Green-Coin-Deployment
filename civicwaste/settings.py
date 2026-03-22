@@ -4,7 +4,7 @@ from decouple import config
 import pymysql
 import dj_database_url
 
-pymysql.install_as_MySQLdb()
+# pymysql.install_as_MySQLdb() removed to use mysqlclient directly on Render
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -72,7 +72,12 @@ if config('DATABASE_URL', default=''):
     DATABASES = {
         'default': dj_database_url.config(default=config('DATABASE_URL'))
     }
-    DATABASES['default']['OPTIONS'] = {'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"}
+    # For TiDB Serverless SSL (Required)
+    DATABASES['default']['OPTIONS'] = {
+        'ssl': {
+            'ca': '/etc/ssl/certs/ca-certificates.crt'
+        }
+    }
 else:
     DATABASES = {
         'default': {
