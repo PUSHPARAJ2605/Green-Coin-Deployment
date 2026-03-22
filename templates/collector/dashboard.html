@@ -176,6 +176,7 @@
         const actionBtn = document.getElementById('modalActionBtn');
         
         content.innerHTML = `
+            <div id="modalError" class="error-message" style="display: none; margin-bottom: 10px;"></div>
             <h4 style="margin-bottom: 10px;">Report #${report.id}</h4>
             <img src="${report.photo}" style="width: 100%; border-radius: 8px; max-height: 200px; object-fit: cover; margin-bottom: 10px;">
             <div class="status-badge status-${report.status}">${report.status}</div>
@@ -231,10 +232,19 @@
         if (response.ok) {
             document.getElementById('reportModal').style.display='none';
             if (newStatus === 'collected') window.location.href = '/collector/success/';
-
             else loadReports();
+        } else {
+            const errBox = document.getElementById('modalError');
+            if (errBox) {
+                const data = await response.json();
+                errBox.innerText = data.error || data.detail || 'Failed to update status.';
+                errBox.style.display = 'block';
+            }
         }
     }
+
+    // Initial load
+    loadReports();
 
 </script>
 {% endblock %}
