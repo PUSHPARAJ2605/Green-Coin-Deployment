@@ -10,6 +10,8 @@
             <p style="color: var(--text-muted); font-size: 14px;">Join our community</p>
         </div>
         
+        <div id="registerError" class="error-message"></div>
+        
         <form id="registerForm">
             <div class="input-group">
                 <input type="text" id="full_name" class="form-input" placeholder="Full Name" aria-label="Full Name" required>
@@ -56,7 +58,7 @@
         </style>
         
         <p style="text-align: center; font-size: 14px; color: var(--text-muted);">
-            Already have an account? <a href="/" style="color: var(--green-primary); font-weight: 600; text-decoration: none;">Sign in</a>
+            Already have an account? <a href="/login/" style="color: var(--green-primary); font-weight: 600; text-decoration: none;">Sign in</a>
         </p>
     </div>
 </div>
@@ -88,6 +90,9 @@ document.getElementById('togglePassword').addEventListener('click', function() {
 
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const registerError = document.getElementById('registerError');
+    registerError.style.display = 'none';
+    
     const full_name = document.getElementById('full_name').value;
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
@@ -112,10 +117,23 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
                 window.location.href = '/dashboard/collector/';
             }
         } else {
-            alert(JSON.stringify(data));
+            // Flatten errors if it's an object from DRF
+            let msg = 'Registration failed.';
+            if (typeof data === 'object') {
+                const firstKey = Object.keys(data)[0];
+                const firstVal = data[firstKey];
+                msg = Array.isArray(firstVal) ? firstVal[0] : JSON.stringify(data);
+                if (msg.includes('user with this email already exists')) msg = 'User with this email already exists.';
+            } else {
+                msg = data;
+            }
+            registerError.innerText = msg;
+            registerError.style.display = 'block';
         }
     } catch (err) {
         console.error(err);
+        registerError.innerText = 'Something went wrong. Please try again later.';
+        registerError.style.display = 'block';
     }
 });
 </script>

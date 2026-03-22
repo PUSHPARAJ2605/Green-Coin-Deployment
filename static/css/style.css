@@ -127,6 +127,19 @@ button {
 .status-picking { background: #FFF3CD; color: #D97706; }
 .status-collected { background: #E8F5E9; color: #2E7D32; }
 
+.error-message {
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 16px;
+    display: none;
+    text-align: center;
+}
+
 .logo {
     display: flex;
     align-items: center;
