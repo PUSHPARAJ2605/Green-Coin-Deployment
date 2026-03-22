@@ -7,6 +7,7 @@ class WasteReport(models.Model):
         ('Plastic Waste', 'Plastic Waste'),
         ('Construction Waste', 'Construction Waste'),
         ('Medical Waste', 'Medical Waste'),
+        ('Dead Animals', 'Dead Animals'),
         ('Other', 'Other'),
     )
     STATUS_CHOICES = (

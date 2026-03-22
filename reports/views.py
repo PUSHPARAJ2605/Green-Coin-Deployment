@@ -32,6 +32,7 @@ class WasteReportViewSet(viewsets.ModelViewSet):
             'Plastic Waste': 15,
             'Construction Waste': 20,
             'Medical Waste': 30,
+            'Dead Animals': 50,  # High reward for specialized disposal
             'Other': 0  # To be decided by collector
         }
         coins = reward_map.get(waste_type, 10)
@@ -43,52 +44,49 @@ class WasteReportViewSet(viewsets.ModelViewSet):
             # Check for duplicate hash
             is_duplicate = WasteReport.objects.filter(description__icontains=h).exists()
             
-            # Enhanced "AI" Validation
+            # Enhanced AI Validation Logic
             is_spam = False
             filename_lower = photo.name.lower()
             
-            # 1. Filename checks
-            if any(word in filename_lower for word in ['spam', 'screenshot', 'test', 'dummy', 'wallpaper', 'background']):
+            # 1. Filename checks (Expanded)
+            spam_keywords = ['spam', 'screenshot', 'test', 'dummy', 'wallpaper', 'background', 'logo', 'icon']
+            if any(word in filename_lower for word in spam_keywords):
                 is_spam = True
                 
-            # 2. Image contents analysis (differentiate clipart/borders from real photos)
+            # 2. Image contents analysis (Detailed Variance Check)
             try:
-                # We already loaded 'img' above
                 img_rgb = img.convert('RGB')
-                w, h = img_rgb.size
+                w, h_img = img_rgb.size
                 
-                # Reject extreme aspect ratios (banners, dividers, sidebars)
-                if w / h > 2.5 or h / w > 2.5:
+                # Reject extreme aspect ratios (non-camera formats)
+                if w / h_img > 3.0 or h_img / w > 3.0:
                     is_spam = True
                 
-                # Reject low color variance (clipart, solid colors)
-                # Resize to analyze color distribution efficiently
+                # Analyze color distribution
                 small_img = img_rgb.resize((100, 100))
-                
-                # Pillow < 14 uses getdata(), newer uses get_flattened_data() or similar.
-                # getcolors() returns a list of (count, pixel) or None if > maxcolors.
                 colors = small_img.getcolors(maxcolors=10000)
+                
                 if colors is not None:
-                    # If it successfully fit into 10,000 unique colors, it might be clipart.
-                    # 100x100 = 10,000 pixels. Real photos typically have > 8,000 colors, 
-                    # but definitely > 5,000 unless it's a completely black frame.
                     unique_colors = len(colors)
-                    if unique_colors < 5000:
+                    # Real photos of waste/animals have high color diversity (>3000 unique colors in 100x100)
+                    # Simple clipart or solid backgrounds usually have <1500 colors.
+                    if unique_colors < 2000:
                         is_spam = True
             except Exception as e:
-                print(f"Image analysis error: {e}")
+                print(f"AI Analysis Error: {e}")
                 pass
+
             if is_duplicate or is_spam:
                 Transaction.objects.create(
                     user=self.request.user,
                     amount=20,
                     transaction_type='penalty',
-                    description="Penalty for invalid/duplicate report image"
+                    description=f"Penalty: {'Duplicate' if is_duplicate else 'AI rejected invalid'} image upload"
                 )
                 if is_duplicate:
                     raise serializers.ValidationError("Duplicate image detected! You have been penalized 20 coins.")
                 else:
-                    raise serializers.ValidationError("AI strictly rejected this image. You have been penalized 20 coins.")
+                    raise serializers.ValidationError("AI Analysis: This image looks like clipart or a screenshot. Please upload a real photo. (20 coins penalized)")
 
             # Save the hash in the description so we can find it next time
             desc = serializer.validated_data.get('description', '')
