@@ -38,60 +38,67 @@ class WasteReportViewSet(viewsets.ModelViewSet):
         coins = reward_map.get(waste_type, 10)
 
         if photo:
-            img = Image.open(photo)
-            h = str(imagehash.average_hash(img))
-            
-            # Check for duplicate hash
-            is_duplicate = WasteReport.objects.filter(description__icontains=h).exists()
-            
-            # Enhanced AI Validation Logic
-            is_spam = False
-            filename_lower = photo.name.lower()
-            
-            # 1. Filename checks (Expanded)
-            spam_keywords = ['spam', 'screenshot', 'test', 'dummy', 'wallpaper', 'background', 'logo', 'icon']
-            if any(word in filename_lower for word in spam_keywords):
-                is_spam = True
-                
-            # 2. Image contents analysis (Detailed Variance Check)
             try:
-                img_rgb = img.convert('RGB')
-                w, h_img = img_rgb.size
+                img = Image.open(photo)
+                # Ensure it's in a memory-safe state
+                img.verify() # Verify it's an image
+                img = Image.open(photo) # Re-open because verify() makes it unusable
                 
-                # Reject extreme aspect ratios (non-camera formats)
-                if w / h_img > 3.0 or h_img / w > 3.0:
+                h = str(imagehash.average_hash(img))
+                
+                # Check for duplicate hash
+                is_duplicate = WasteReport.objects.filter(description__icontains=h).exists()
+                
+                # Enhanced AI Validation Logic
+                is_spam = False
+                filename_lower = photo.name.lower()
+                
+                # 1. Filename checks
+                spam_keywords = ['spam', 'screenshot', 'test', 'dummy', 'wallpaper', 'background', 'logo', 'icon']
+                if any(word in filename_lower for word in spam_keywords):
                     is_spam = True
-                
-                # Analyze color distribution
-                small_img = img_rgb.resize((100, 100))
-                colors = small_img.getcolors(maxcolors=10000)
-                
-                if colors is not None:
-                    unique_colors = len(colors)
-                    # Real photos of waste/animals have high color diversity (>3000 unique colors in 100x100)
-                    # Simple clipart or solid backgrounds usually have <1500 colors.
-                    if unique_colors < 2000:
+                    
+                # 2. Image contents analysis
+                try:
+                    img_rgb = img.convert('RGB')
+                    w, h_img = img_rgb.size
+                    
+                    if w / h_img > 3.0 or h_img / w > 3.0:
                         is_spam = True
+                    
+                    small_img = img_rgb.resize((100, 100))
+                    colors = small_img.getcolors(maxcolors=10000)
+                    
+                    if colors is not None:
+                        unique_colors = len(colors)
+                        if unique_colors < 1800: # Slightly relaxed threshold
+                            is_spam = True
+                except Exception as ai_err:
+                    print(f"AI Analysis Error: {ai_err}")
+                    pass
+
+                if is_duplicate or is_spam:
+                    Transaction.objects.create(
+                        user=self.request.user,
+                        amount=20,
+                        transaction_type='penalty',
+                        description=f"Penalty: {'Duplicate' if is_duplicate else 'AI rejected invalid'} image upload"
+                    )
+                    if is_duplicate:
+                        raise serializers.ValidationError("Duplicate image detected! You have been penalized 20 coins.")
+                    else:
+                        raise serializers.ValidationError("AI Analysis: This image looks like clipart or a screenshot. Please upload a real photo. (20 coins penalized)")
+
+                # Save the hash in the description
+                desc = serializer.validated_data.get('description', '')
+                desc = f"{desc}\n[HASH:{h}]"
+                serializer.save(reported_by=self.request.user, coins_awarded=coins, description=desc)
+            except serializers.ValidationError:
+                raise # Re-raise field validation errors
             except Exception as e:
-                print(f"AI Analysis Error: {e}")
-                pass
-
-            if is_duplicate or is_spam:
-                Transaction.objects.create(
-                    user=self.request.user,
-                    amount=20,
-                    transaction_type='penalty',
-                    description=f"Penalty: {'Duplicate' if is_duplicate else 'AI rejected invalid'} image upload"
-                )
-                if is_duplicate:
-                    raise serializers.ValidationError("Duplicate image detected! You have been penalized 20 coins.")
-                else:
-                    raise serializers.ValidationError("AI Analysis: This image looks like clipart or a screenshot. Please upload a real photo. (20 coins penalized)")
-
-            # Save the hash in the description so we can find it next time
-            desc = serializer.validated_data.get('description', '')
-            desc = f"{desc}\n[HASH:{h}]"
-            serializer.save(reported_by=self.request.user, coins_awarded=coins, description=desc)
+                print(f"Image Processing error: {e}")
+                # Fallback: Save without AI analysis if it fails to avoid 500
+                serializer.save(reported_by=self.request.user, coins_awarded=coins)
         else:
             serializer.save(reported_by=self.request.user, coins_awarded=coins)
 

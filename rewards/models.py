@@ -32,23 +32,25 @@ def update_user_balance(sender, instance, created, **kwargs):
         # Refresh user from db to get exact updated coins
         user.refresh_from_db()
         
-        # Broadcast the balance update to connected clients (Safely)
-        try:
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
-            
-            channel_layer = get_channel_layer()
-            if channel_layer:
-                async_to_sync(channel_layer.group_send)(
-                    "waste_updates",
-                    {
-                        "type": "status_update",
-                        "message": "transaction_created",
-                        "user_id": user.id,
-                        "new_balance": user.coins
-                    }
-                )
-        except Exception as e:
-            print(f"Channel Layer Error: {e}")
-            # Do not crash the transaction if real-time fails
-            pass
+        # Broadcast the balance update ONLY after the transaction is successfully committed to the DB
+        def broadcast():
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    async_to_sync(channel_layer.group_send)(
+                        "waste_updates",
+                        {
+                            "type": "status_update",
+                            "message": "transaction_created",
+                            "user_id": user.id,
+                            "new_balance": user.coins
+                        }
+                    )
+            except Exception as e:
+                print(f"Channel Layer Error: {e}")
+        
+        from django.db import transaction
+        transaction.on_commit(broadcast)
